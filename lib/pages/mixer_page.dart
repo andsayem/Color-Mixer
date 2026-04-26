@@ -94,11 +94,13 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
   late TextEditingController _notesController;
   bool _hasChanges = false;
 
-  final List<_ColorOption> _primaryColors = [
-    _ColorOption('Red', AppColors.red, Icons.water_drop),
-    _ColorOption('Blue', AppColors.blue, Icons.water_drop),
-    _ColorOption('Yellow', AppColors.yellow, Icons.water_drop),
-  ];
+final List<_ColorOption> _primaryColors = [
+  _ColorOption('Red', AppColors.red, Icons.water_drop),
+  _ColorOption('Blue', AppColors.blue, Icons.water_drop),
+  _ColorOption('Yellow', AppColors.yellow, Icons.water_drop),
+  _ColorOption('White', Colors.white, Icons.circle_outlined),
+  _ColorOption('Black', Colors.black, Icons.circle),
+];
 
   late AnimationController _pulseController;
   late AnimationController _rotateController;
@@ -155,14 +157,25 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
   int _getGreen(Color c) => _ch(c, 8);
   int _getBlue(Color c) => _ch(c, 0);
 
-  Map<String, int> _mixPct() {
-    if (_drops == 0) return {'Red': 0, 'Blue': 0, 'Yellow': 0};
+Map<String, int> _mixPct() {
+  if (_drops == 0) {
     return {
-      'Red': ((_colorCounts['Red'] ?? 0) * 100 / _drops).round(),
-      'Blue': ((_colorCounts['Blue'] ?? 0) * 100 / _drops).round(),
-      'Yellow': ((_colorCounts['Yellow'] ?? 0) * 100 / _drops).round(),
+      'Red': 0,
+      'Blue': 0,
+      'Yellow': 0,
+      'White': 0,
+      'Black': 0,
     };
   }
+
+  return {
+    'Red': ((_colorCounts['Red'] ?? 0) * 100 / _drops).round(),
+    'Blue': ((_colorCounts['Blue'] ?? 0) * 100 / _drops).round(),
+    'Yellow': ((_colorCounts['Yellow'] ?? 0) * 100 / _drops).round(),
+    'White': ((_colorCounts['White'] ?? 0) * 100 / _drops).round(),
+    'Black': ((_colorCounts['Black'] ?? 0) * 100 / _drops).round(),
+  };
+}
 
   String get _hexString {
     final c = _mixedColor;
@@ -171,7 +184,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
 
   String _colorLabel(Color color) {
     int r = _getRed(color), g = _getGreen(color), b = _getBlue(color);
-    final refs = {
+   final refs = {
       'Red': [239, 68, 68],
       'Blue': [59, 130, 246],
       'Yellow': [245, 158, 11],
@@ -182,6 +195,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
       'Brown': [120, 53, 15],
       'Gray': [148, 163, 184],
       'White': [255, 255, 255],
+      'Black': [0, 0, 0],
     };
     String nearest = 'Custom';
     int best = 9999;
@@ -627,23 +641,25 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
 
   // ── Primary Colors ────────────────────────────────────────────────────────
   Widget _buildPrimaryColors() {
-    return Row(
-      children: _primaryColors.map((opt) {
-        final count = _colorCounts[opt.name] ?? 0;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-                right: opt == _primaryColors.last ? 0 : 10),
+    return LayoutBuilder(builder: (context, constraints) {
+      final itemWidth = (constraints.maxWidth - 20) / 3;
+      return Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: _primaryColors.map((opt) {
+          final count = _colorCounts[opt.name] ?? 0;
+          return SizedBox(
+            width: itemWidth,
             child: _ColorCard(
               option: opt,
               count: count,
               onAdd: () => _changeDrop(opt, 1),
               onRemove: () => _changeDrop(opt, -1),
             ),
-          ),
-        );
-      }).toList(),
-    );
+          );
+        }).toList(),
+      );
+    });
   }
 
   // ── Analysis Card ─────────────────────────────────────────────────────────
@@ -709,9 +725,14 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
         _bar('Blue', pct['Blue'] ?? 0, const Color(0xFF3B82F6)),
         const SizedBox(height: 10),
         _bar('Yellow', pct['Yellow'] ?? 0, const Color(0xFFF59E0B)),
+        const SizedBox(height: 10),
+        _bar('White', pct['White'] ?? 0, Colors.grey.shade300),
+        const SizedBox(height: 10),
+        _bar('Black', pct['Black'] ?? 0, Colors.black),
         const SizedBox(height: 18),
         Container(height: 1, color: AppColors.divider),
         const SizedBox(height: 16),
+
         Row(children: [
           Expanded(
               child: _infoTile('RGB',

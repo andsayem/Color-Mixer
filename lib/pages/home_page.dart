@@ -1,4 +1,6 @@
+import 'package:colormixer/common/admob_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/color_project.dart';
 import 'mixer_page.dart';
 
@@ -11,7 +13,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final List<ColorProject> _projects = [ColorProject.defaultProject];
-
+  BannerAd? _bannerAd;
   late AnimationController _rotateCtrl;
   late AnimationController _fabCtrl;
   late Animation<double> _fabScale;
@@ -31,6 +33,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       begin: 1.0,
       end: 0.88,
     ).animate(CurvedAnimation(parent: _fabCtrl, curve: Curves.easeOut));
+    AdmobHelper.loadInterstitialAd();
+    Future.delayed(const Duration(seconds: 1), () async {
+      if (!mounted) return;
+
+      final width = MediaQuery.of(context).size.width.toInt();
+      final ad = await AdmobHelper.loadBannerAd(
+        size: AdSize(width: width - 27, height: 220),
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _bannerAd = ad;
+      });
+    });
   }
 
   @override
@@ -71,6 +87,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (_) => _NewProjectDialog(controller: ctrl),
     );
     if (result != null && result.trim().isNotEmpty) {
+        AdmobHelper.showInterstitialAd();
       final proj = ColorProject.blank(name: result.trim());
       await _openMixer(proj, isNew: true);
     }
@@ -103,11 +120,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 _buildAppBar(),
-                // _buildStatsRow(),
+
+                _bannerAd == null
+                    ? const SliverToBoxAdapter(child: SizedBox())
+                    : SliverToBoxAdapter(
+                        child: Container(
+                          width: double.infinity,
+                          height: _bannerAd!.size.height.toDouble(),
+                          alignment: Alignment.center,
+                          child: AdWidget(ad: _bannerAd!),
+                        ),
+                      ),
+
                 if (_projects.isEmpty)
                   _buildEmptyState()
                 else
                   _buildProjectList(),
+
                 const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
@@ -232,8 +261,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(bottom: 14),
             child: _ProjectCard(
               project: project,
-              onEdit: () => _openMixer(project),
-              onDelete: () => _deleteProject(project),
+              onEdit: () =>{
+                  AdmobHelper.showInterstitialAd(),
+                   _openMixer(project) },
+              onDelete: () => {
+                AdmobHelper.showInterstitialAd(),
+                _deleteProject(project)},
             ),
           );
         }, childCount: _projects.length),

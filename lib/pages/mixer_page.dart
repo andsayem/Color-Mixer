@@ -423,40 +423,50 @@ Map<String, int> _mixPct() {
                         const SizedBox(height: 20),
                         _buildColorPreview(),
                         const SizedBox(height: 28),
-                       // Primary Colors title with camera and gallery icons on the right
-Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    _buildSectionTitle('Primary Colors', Icons.palette_rounded),
-    Row(
-      children: [
-        GestureDetector(
-          onTap: _pickColorFromCamera,
-          child: Container(
-            margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              gradient: AppColors.accentGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                       SliverPersistentHeader(
+  pinned: true,
+  delegate: _StickyHeaderDelegate(
+    minHeight: 56,
+    maxHeight: 56,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildSectionTitle('Primary Colors', Icons.palette_rounded),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: _pickColorFromCamera,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.accentGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+                ),
+              ),
+              GestureDetector(
+                onTap: _pickColorFromGallery,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.accentGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_rounded, color: Colors.white, size: 16),
+                ),
+              ),
+            ],
           ),
-        ),
-        GestureDetector(
-          onTap: _pickColorFromGallery,
-          child: Container(
-            margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              gradient: AppColors.accentGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.photo_rounded, color: Colors.white, size: 16),
-          ),
-        ),
-      ],
+        ],
+      ),
     ),
-  ],
+  ),
 ),
                         const SizedBox(height: 14),
                         _buildPrimaryColors(),

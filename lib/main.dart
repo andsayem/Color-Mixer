@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
 import 'pages/mixer_page.dart';
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const PolikColorMixerApp());

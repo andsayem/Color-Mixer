@@ -87,7 +87,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (_) => _NewProjectDialog(controller: ctrl),
     );
     if (result != null && result.trim().isNotEmpty) {
-        AdmobHelper.showInterstitialAd();
+      AdmobHelper.showInterstitialAd();
       final proj = ColorProject.blank(name: result.trim());
       await _openMixer(proj, isNew: true);
     }
@@ -261,12 +261,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(bottom: 14),
             child: _ProjectCard(
               project: project,
-              onEdit: () =>{
-                  AdmobHelper.showInterstitialAd(),
-                   _openMixer(project) },
+              onEdit: () => {
+                AdmobHelper.showInterstitialAd(),
+                _openMixer(project),
+              },
               onDelete: () => {
                 AdmobHelper.showInterstitialAd(),
-                _deleteProject(project)},
+                _deleteProject(project),
+              },
             ),
           );
         }, childCount: _projects.length),

@@ -1,4 +1,5 @@
 import 'package:colormixer/common/admob_helper.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
 import 'pages/mixer_page.dart';
@@ -12,6 +13,13 @@ Future<void> main() async {
 
   final adHelper = AdmobHelper();
   WidgetsBinding.instance.addObserver(adHelper);
+  adHelper.loadAppOpenAd(
+    onLoaded: () {
+      Future.delayed(const Duration(seconds: 2), () {
+        AdmobHelper.showAppOpenAd();
+      });
+    },
+  );
   runApp(const PolikColorMixerApp());
 }
 

@@ -1,4 +1,9 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/color_project.dart';
@@ -90,6 +95,7 @@ class MixerPage extends StatefulWidget {
 
 class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
   late Map<String, int> _colorCounts;
+  final List<_ColorOption> _customColors = [];
   late TextEditingController _nameController;
   late TextEditingController _notesController;
   bool _hasChanges = false;
@@ -135,7 +141,13 @@ final List<_ColorOption> _primaryColors = [
     super.dispose();
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+    // ── Helpers ────────────────────────────────────────────────────────────────
+  Color _colorFromPixel(int pixel) {
+    // The image library returns an integer ARGB value for a pixel.
+    // Construct a Flutter Color directly from this value.
+    return Color(pixel);
+  }
+
   int get _drops => _colorCounts.values.fold(0, (s, v) => s + v);
 
   int _ch(Color c, int shift) => (c.toARGB32() >> shift) & 0xFF;
@@ -143,14 +155,14 @@ final List<_ColorOption> _primaryColors = [
   Color get _mixedColor {
     if (_drops == 0) return Colors.white;
     int rs = 0, gs = 0, bs = 0;
-    for (final opt in _primaryColors) {
+    final allColors = [..._primaryColors, ..._customColors];
+    for (final opt in allColors) {
       final cnt = _colorCounts[opt.name] ?? 0;
       rs += _ch(opt.color, 16) * cnt;
       gs += _ch(opt.color, 8) * cnt;
       bs += _ch(opt.color, 0) * cnt;
     }
-    return Color.fromARGB(255, (rs / _drops).round(), (gs / _drops).round(),
-        (bs / _drops).round());
+    return Color.fromARGB(255, (rs / _drops).round(), (gs / _drops).round(), (bs / _drops).round());
   }
 
   int _getRed(Color c) => _ch(c, 16);
@@ -264,6 +276,111 @@ Map<String, int> _mixPct() {
     Navigator.of(context).pop(updated);
   }
 
+  // ── Color Picker ───────────────────────────────────────────────────────────────
+  void _pickCustomColor() async {
+    Color selected = Colors.white;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Pick a color'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: selected,
+            onColorChanged: (c) => selected = c,
+            enableAlpha: false,
+            labelTypes: const [],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              final name = 'Custom \\${selected.value.toRadixString(16).toUpperCase()}';
+              setState(() {
+                _customColors.add(_ColorOption(name, selected, Icons.color_lens_rounded));
+                _colorCounts[name] = 0;
+                _hasChanges = true;
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper to pick a color directly from the camera
+  Future<void> _pickColorFromImage() async {
+    await _pickColorFromGallery();
+  }
+
+  Future<void> _pickColorFromCamera() async {
+    final picker = ImagePicker();
+    final XFile? file = await picker.pickImage(source: ImageSource.camera);
+    if (file == null) return;
+    await _processPickedImage(File(file.path));
+  }
+
+  // Helper to pick a color directly from the gallery
+  Future<void> _pickColorFromGallery() async {
+    final picker = ImagePicker();
+    final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    await _processPickedImage(File(file.path));
+  }
+
+  // Common image processing for camera/gallery selection
+  Future<void> _processPickedImage(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return;
+    Color? selectedColor;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Tap a point to select color'),
+          content: GestureDetector(
+            onTapDown: (details) {
+              final RenderBox box = ctx.findRenderObject() as RenderBox;
+              final localPos = box.globalToLocal(details.globalPosition);
+              final widgetSize = box.size;
+              final scaleX = decoded.width / widgetSize.width;
+              final scaleY = decoded.height / widgetSize.height;
+              int px = (localPos.dx * scaleX).clamp(0, decoded.width - 1).toInt();
+              int py = (localPos.dy * scaleY).clamp(0, decoded.height - 1).toInt();
+              final pixel = decoded.getPixel(px, py);
+              setState(() {
+                selectedColor = _colorFromPixel(pixel as int);
+              });
+            },
+            child: Image.file(imageFile, fit: BoxFit.contain),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+            TextButton(
+              onPressed: selectedColor == null
+                  ? null
+                  : () {
+                      final name = 'Custom \\${selectedColor!.value.toRadixString(16).toUpperCase()}';
+                      setState(() {
+                        _customColors.add(_ColorOption(name, selectedColor!, Icons.color_lens_rounded));
+                        _colorCounts[name] = 0;
+                        _hasChanges = true;
+                      });
+                      Navigator.of(ctx).pop();
+                    },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
   Future<bool> _onWillPop() async {
     if (!_hasChanges) return true;
     final result = await showDialog<bool>(
@@ -306,8 +423,41 @@ Map<String, int> _mixPct() {
                         const SizedBox(height: 20),
                         _buildColorPreview(),
                         const SizedBox(height: 28),
-                        _buildSectionTitle(
-                            'Primary Colors', Icons.palette_rounded),
+                       // Primary Colors title with camera and gallery icons on the right
+Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    _buildSectionTitle('Primary Colors', Icons.palette_rounded),
+    Row(
+      children: [
+        GestureDetector(
+          onTap: _pickColorFromCamera,
+          child: Container(
+            margin: const EdgeInsets.only(right: 8, top: 10, bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 16),
+          ),
+        ),
+        GestureDetector(
+          onTap: _pickColorFromGallery,
+          child: Container(
+            margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.photo_rounded, color: Colors.white, size: 16),
+          ),
+        ),
+      ],
+    ),
+  ],
+),
                         const SizedBox(height: 14),
                         _buildPrimaryColors(),
                         const SizedBox(height: 28),
@@ -316,8 +466,6 @@ Map<String, int> _mixPct() {
                         const SizedBox(height: 14),
                         _buildAnalysisCard(),
                         const SizedBox(height: 28),
-                        _buildSectionTitle('Notes', Icons.notes_rounded),
-                        const SizedBox(height: 14),
                         _buildNotesField(),
                         const SizedBox(height: 28),
                         _buildActions(),
@@ -373,11 +521,34 @@ Map<String, int> _mixPct() {
       centerTitle: true,
       actions: [
         GestureDetector(
+          onTap: _pickCustomColor,
+          child: Container(
+            margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.color_lens_rounded, color: Colors.white, size: 16),
+          ),
+        ),
+        GestureDetector(
+          onTap: _pickColorFromImage,
+          child: Container(
+            margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              gradient: AppColors.accentGradient,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.photo_rounded, color: Colors.white, size: 16),
+          ),
+        ),
+        GestureDetector(
           onTap: _saveProject,
           child: Container(
             margin: const EdgeInsets.only(right: 14, top: 10, bottom: 10),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               gradient: AppColors.accentGradient,
               borderRadius: BorderRadius.circular(12),
@@ -641,12 +812,13 @@ Map<String, int> _mixPct() {
 
   // ── Primary Colors ────────────────────────────────────────────────────────
   Widget _buildPrimaryColors() {
+    final allColors = [..._primaryColors, ..._customColors];
     return LayoutBuilder(builder: (context, constraints) {
       final itemWidth = (constraints.maxWidth - 20) / 3;
       return Wrap(
         spacing: 10,
         runSpacing: 10,
-        children: _primaryColors.map((opt) {
+        children: allColors.map((opt) {
           final count = _colorCounts[opt.name] ?? 0;
           return SizedBox(
             width: itemWidth,

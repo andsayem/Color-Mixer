@@ -1,8 +1,13 @@
+// import 'package:colormixer/common/admob_helper.dart';
 import 'package:colormixer/common/admob_helper.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
+// import 'package:google_mobile_ads/google_mobile_ads.dart'; // AdMob removed
+import 'package:share_plus/share_plus.dart';
 import '../models/color_project.dart';
-import 'mixer_page.dart';
+import '../ui/app_colors.dart';
+import '../ui/app_drawer.dart';
+import '../ui/bg_painter.dart';
+import 'mixer_page.dart' hide AppColors, BgPainter;
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,7 +18,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final List<ColorProject> _projects = [ColorProject.defaultProject];
-  BannerAd? _bannerAd;
+  // BannerAd? _bannerAd; // Removed AdMob banner
   late AnimationController _rotateCtrl;
   late AnimationController _fabCtrl;
   late Animation<double> _fabScale;
@@ -33,20 +38,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       begin: 1.0,
       end: 0.88,
     ).animate(CurvedAnimation(parent: _fabCtrl, curve: Curves.easeOut));
-    AdmobHelper.loadInterstitialAd();
-    Future.delayed(const Duration(seconds: 1), () async {
-      if (!mounted) return;
-
-      final width = MediaQuery.of(context).size.width.toInt();
-      final ad = await AdmobHelper.loadBannerAd(
-        size: AdSize(width: width - 27, height: 220),
-      );
-      if (!mounted) return;
-
-      setState(() {
-        _bannerAd = ad;
-      });
-    });
+    // AdMob interstitial and banner loading removed
   }
 
   @override
@@ -103,11 +95,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  void _shareApp() {
+    Share.share('Check out the Color Mixer app! https://play.google.com/store/apps/details?id=com.andsayem.colormixer');
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
+      drawer: const AppDrawer(),
       floatingActionButton: _buildFab(),
       body: Stack(
         children: [
@@ -121,17 +118,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               slivers: [
                 _buildAppBar(),
 
-                _bannerAd == null
-                    ? const SliverToBoxAdapter(child: SizedBox())
-                    : SliverToBoxAdapter(
-                        child: Container(
-                          width: double.infinity,
-                          height: _bannerAd!.size.height.toDouble(),
-                          alignment: Alignment.center,
-                          child: AdWidget(ad: _bannerAd!),
-                        ),
-                      ),
-
+                // Banner ad removed
                 if (_projects.isEmpty)
                   _buildEmptyState()
                 else
@@ -154,6 +141,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       backgroundColor: AppColors.bg.withAlpha(200),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.share, color: Colors.white),
+          tooltip: 'Share App',
+          onPressed: _shareApp,
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.pin,
         background: Padding(
@@ -195,7 +189,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ],
               ),
               const SizedBox(height: 2),
-              const Text(
+              Text(
                 'My paint mix projects',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),

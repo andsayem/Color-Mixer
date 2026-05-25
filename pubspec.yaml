@@ -36,6 +36,11 @@ dependencies:
   flutter_launcher_icons: ^0.14.4
   cupertino_icons: ^1.0.8
   google_mobile_ads: ^8.0.0
+  flutter_colorpicker: ^1.0.3
+  share_plus: ^13.1.0
+  image_picker: ^1.2.2
+  palette_generator: ^0.3.3+7
+  image: ^4.0.0
 
 dev_dependencies:
   flutter_test:

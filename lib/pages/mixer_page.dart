@@ -7,7 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/color_project.dart';
-
+import '../common/admob_helper.dart';
 // ── Design Tokens ──────────────────────────────────────────────────────────────
 class AppColors {
   static const bg = Color(0xFF0A0A1A);
@@ -93,7 +93,7 @@ class MixerPage extends StatefulWidget {
   State<MixerPage> createState() => _MixerPageState();
 }
 
-class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
+class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin, WidgetsBindingObserver {
   late Map<String, int> _colorCounts;
   final List<_ColorOption> _customColors = [];
   late TextEditingController _nameController;
@@ -115,6 +115,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance?.addObserver(this);
     _colorCounts = Map.from(widget.project.colorCounts);
     _nameController = TextEditingController(text: widget.project.name);
     _notesController = TextEditingController(text: widget.project.notes ?? '');
@@ -128,8 +129,9 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
       duration: const Duration(seconds: 12),
     )..repeat();
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+  CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+);
+AdmobHelper.loadInterstitialAd();
   }
 
   @override
@@ -138,6 +140,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
     _rotateController.dispose();
     _nameController.dispose();
     _notesController.dispose();
+    WidgetsBinding.instance?.removeObserver(this);
     super.dispose();
   }
 
@@ -281,6 +284,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
           ? null
           : _notesController.text.trim(),
     );
+    AdmobHelper.showInterstitialAd();
     Navigator.of(context).pop(updated);
   }
 
@@ -542,6 +546,7 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
                         _buildNotesField(),
                         const SizedBox(height: 28),
                         _buildActions(),
+                        AdmobHelper.getBannerAdWidget(),
                         const SizedBox(height: 32),
                       ]),
                     ),

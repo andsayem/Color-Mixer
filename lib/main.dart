@@ -1,10 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../common/admob_helper.dart';
 import 'pages/home_page.dart';
 import 'pages/mixer_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await MobileAds.instance.initialize();
+  AdmobHelper().loadAppOpenAd();
   runApp(const PolikColorMixerApp());
 }
 

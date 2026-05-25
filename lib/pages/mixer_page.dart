@@ -440,20 +440,20 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin {
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   _buildAppBar(),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        _buildNameField(),
-                        const SizedBox(height: 20),
-                        _buildColorPreview(),
-                        const SizedBox(height: 28),
-                      ]),
-                    ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 4,
                   ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildNameField(),
+                      const SizedBox(height: 12),
+                      _buildColorPreview(),
+                      const SizedBox(height: 20),
+                    ]),
+                  ),
+                ),
                   SliverPersistentHeader(
                     pinned: true,
                     delegate: _StickyHeaderDelegate(

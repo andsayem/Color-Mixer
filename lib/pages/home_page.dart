@@ -1,5 +1,6 @@
 // import 'package:colormixer/common/admob_helper.dart';
 import 'package:colormixer/common/admob_helper.dart';
+import 'package:colormixer/widget/adaptive_banner_ad.dart';
 import 'package:flutter/material.dart';
 // import 'package:google_mobile_ads/google_mobile_ads.dart'; // AdMob removed
 import 'package:share_plus/share_plus.dart';
@@ -96,7 +97,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _shareApp() {
-    Share.share('Check out the Color Mixer app! https://play.google.com/store/apps/details?id=com.andsayem.colormixer');
+    Share.share(
+      'Check out the Color Mixer app! https://play.google.com/store/apps/details?id=com.andsayem.colormixer',
+    );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -117,6 +120,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 _buildAppBar(),
+
+                // ✅ Ad Here
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: const AdaptiveBannerAdWidget(),
+                  ),
+                ),
 
                 // Banner ad removed
                 if (_projects.isEmpty)

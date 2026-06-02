@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:colormixer/widget/adaptive_banner_ad.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/color_project.dart';
 import '../common/admob_helper.dart';
+
 // ── Design Tokens ──────────────────────────────────────────────────────────────
 class AppColors {
   static const bg = Color(0xFF0A0A1A);
@@ -93,7 +95,8 @@ class MixerPage extends StatefulWidget {
   State<MixerPage> createState() => _MixerPageState();
 }
 
-class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _MixerPageState extends State<MixerPage>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late Map<String, int> _colorCounts;
   final List<_ColorOption> _customColors = [];
   late TextEditingController _nameController;
@@ -129,9 +132,9 @@ class _MixerPageState extends State<MixerPage> with TickerProviderStateMixin, Wi
       duration: const Duration(seconds: 12),
     )..repeat();
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
-  CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-);
-AdmobHelper.loadInterstitialAd();
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    AdmobHelper.loadInterstitialAd();
   }
 
   @override
@@ -444,20 +447,26 @@ AdmobHelper.loadInterstitialAd();
                 physics: const BouncingScrollPhysics(),
                 slivers: [
                   _buildAppBar(),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 4,
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _buildNameField(),
+                        const SizedBox(height: 12),
+                        _buildColorPreview(),
+                        const SizedBox(height: 20),
+                      ]),
+                    ),
                   ),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      _buildNameField(),
-                      const SizedBox(height: 12),
-                      _buildColorPreview(),
-                      const SizedBox(height: 20),
-                    ]),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: const AdaptiveBannerAdWidget(),
+                    ),
                   ),
-                ),
                   SliverPersistentHeader(
                     pinned: true,
                     delegate: _StickyHeaderDelegate(
@@ -546,7 +555,12 @@ AdmobHelper.loadInterstitialAd();
                         _buildNotesField(),
                         const SizedBox(height: 28),
                         _buildActions(),
-                        AdmobHelper.getBannerAdWidget(),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: const AdaptiveBannerAdWidget(),
+                          ),
+                        ),
                         const SizedBox(height: 32),
                       ]),
                     ),

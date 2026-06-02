@@ -8,7 +8,14 @@ import 'pages/mixer_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await MobileAds.instance.initialize();
-  AdmobHelper().loadAppOpenAd();
+  final adHelper = AdmobHelper();
+  adHelper.loadAppOpenAd(
+    onLoaded: () {
+      Future.delayed(const Duration(seconds: 2), () {
+        AdmobHelper.showAppOpenAd();
+      });
+    },
+  );
   runApp(const PolikColorMixerApp());
 }
 

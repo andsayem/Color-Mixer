@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
-
 import '../ui/app_colors.dart';
 
 /// Settings page that lets the user customize accent colors using a color picker.
@@ -32,6 +31,7 @@ class _SettingsPageState extends State<SettingsPage> {
               'Choose Accent Color',
               style: TextStyle(color: Colors.white, fontSize: 18),
             ),
+
             const SizedBox(height: 12),
             // Color picker widget from flutter_colorpicker package
             BlockPicker(

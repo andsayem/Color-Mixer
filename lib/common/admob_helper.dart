@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart'; 
+import 'package:colormixer/presentation/controllers/purchase_controller.dart';
+
 class AdmobHelper with WidgetsBindingObserver {
   //ca-app-pub-1195883693665145/6786028831
   // ---------------- Ad Unit IDs ----------------
@@ -8,6 +11,16 @@ class AdmobHelper with WidgetsBindingObserver {
   static const String interstitialAdUnitId = "ca-app-pub-1195883693665145/8138829177";
   static const String rewardedAdUnitId = "ca-app-pub-1195883693665145/4199584161";
   static const String appOpenAdUnitId = "ca-app-pub-1195883693665145/6834628007";
+
+  static bool get _areAdsRemoved {
+    try {
+      if (Get.isRegistered<PurchaseController>()) {
+        return Get.find<PurchaseController>().adsRemoved.value;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   // ================= Interstitial =================
   static InterstitialAd? _interstitialAd;
   static bool suppressAppOpen = false;
@@ -16,6 +29,7 @@ class AdmobHelper with WidgetsBindingObserver {
 
 /// LOAD
 static void loadInterstitialAd() {
+  if (_areAdsRemoved) return;
   if (_isInterstitialLoading || _interstitialAd != null) return;
 
   _isInterstitialLoading = true;
@@ -57,6 +71,12 @@ static void loadInterstitialAd() {
   );
 }
 static void showInterstitialAd({VoidCallback? onAdDismissed}) {
+  if (_areAdsRemoved) {
+    if (onAdDismissed != null) {
+      onAdDismissed();
+    }
+    return;
+  }
   if (_interstitialAd == null) {
     debugPrint("Ad not ready");
 
@@ -154,6 +174,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
   }
 
   static Future<BannerAd?> loadAdaptiveBanner(BuildContext context) async {
+    if (_areAdsRemoved) return null;
     final width = MediaQuery.of(context).size.width.toInt();
 
     final AnchoredAdaptiveBannerAdSize? size =
@@ -178,10 +199,11 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
     return banner;
   }
 
-  static Future<BannerAd> loadBannerAd({
+  static Future<BannerAd?> loadBannerAd({
     String? adUnitId,
     AdSize size = const AdSize(width: 320, height: 50),
   }) async {
+    if (_areAdsRemoved) return null;
     final banner = BannerAd(
       adUnitId: adUnitId ?? bannerAdUnitId,
       size: size,
@@ -215,6 +237,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
   }
 
   static Widget getBannerAdWidget({String? adUnitId, AdSize size = const AdSize(width: 320, height: 50)}) {
+    if (_areAdsRemoved) return const SizedBox.shrink();
     final key = _bannerAdKey(adUnitId: adUnitId, size: size);
     final bannerAd = _bannerAdCache.putIfAbsent(
       key,
@@ -229,6 +252,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
   }
 
   static Widget bannerAdWidget(BannerAd bannerAd, {double? width, double? height}) {
+    if (_areAdsRemoved) return const SizedBox.shrink();
     return SizedBox(
       width: width ?? bannerAd.size.width.toDouble(),
       height: height ?? bannerAd.size.height.toDouble(),
@@ -243,6 +267,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
   static final Duration maxCacheDuration = const Duration(hours: 4);
 
   void loadAppOpenAd({Function()? onLoaded}) {
+    if (_areAdsRemoved) return;
     AppOpenAd.load(
       adUnitId: appOpenAdUnitId,
       request: const AdRequest(),
@@ -259,7 +284,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
   }
 
   static void showAppOpenAd() {
-    if (suppressAppOpen || _appOpenAd == null || _isShowingAppOpen) return;
+    if (_areAdsRemoved || suppressAppOpen || _appOpenAd == null || _isShowingAppOpen) return;
 
     if (_appOpenLoadTime != null &&
         DateTime.now()
@@ -301,6 +326,7 @@ static void showInterstitialAd({VoidCallback? onAdDismissed}) {
 
   static Future<Widget> getAdaptiveBannerWidget(double adWidth,
       {String? adUnitId}) async {
+    if (_areAdsRemoved) return const SizedBox.shrink();
 
     if (_adaptiveBannerAd != null && _isAdaptiveLoaded) {
       return SizedBox(

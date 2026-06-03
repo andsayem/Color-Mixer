@@ -1,12 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../common/admob_helper.dart';
+import 'presentation/controllers/purchase_controller.dart';
 import 'pages/home_page.dart';
 import 'pages/mixer_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Get.put(PurchaseController());
   await MobileAds.instance.initialize();
   final adHelper = AdmobHelper();
   adHelper.loadAppOpenAd(
@@ -24,7 +27,7 @@ class PolikColorMixerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
       title: 'Color Mixer',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

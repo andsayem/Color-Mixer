@@ -1,6 +1,8 @@
 import 'package:colormixer/common/admob_helper.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:colormixer/presentation/controllers/purchase_controller.dart';
 
 class AdaptiveBannerAdWidget extends StatefulWidget {
   const AdaptiveBannerAdWidget({super.key});
@@ -27,6 +29,12 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
   }
 
   Future<void> _loadAd() async {
+    try {
+      if (Get.isRegistered<PurchaseController>() && Get.find<PurchaseController>().adsRemoved.value) {
+        return;
+      }
+    } catch (_) {}
+
     if (_isLoading || _bannerAd != null) return;
 
     _isLoading = true;
@@ -91,20 +99,30 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isLoaded || _bannerAd == null) {
+    if (!Get.isRegistered<PurchaseController>()) {
       return const SizedBox(height: 60);
     }
 
-    return SafeArea(
-      child: Container(
-        alignment: Alignment.center,
-        color: Colors.transparent,
-        child: SizedBox(
-          width: _bannerAd!.size.width.toDouble(),
-          height: _bannerAd!.size.height.toDouble(),
-          child: AdWidget(ad: _bannerAd!),
+    final purchaseController = Get.find<PurchaseController>();
+    return Obx(() {
+      if (purchaseController.adsRemoved.value) {
+        return const SizedBox.shrink();
+      }
+      if (!_isLoaded || _bannerAd == null) {
+        return const SizedBox(height: 60);
+      }
+
+      return SafeArea(
+        child: Container(
+          alignment: Alignment.center,
+          color: Colors.transparent,
+          child: SizedBox(
+            width: _bannerAd!.size.width.toDouble(),
+            height: _bannerAd!.size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

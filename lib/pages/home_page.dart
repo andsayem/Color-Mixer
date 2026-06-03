@@ -1,8 +1,9 @@
-// import 'package:colormixer/common/admob_helper.dart';
 import 'package:colormixer/common/admob_helper.dart';
 import 'package:colormixer/widget/adaptive_banner_ad.dart';
+import 'package:colormixer/presentation/widgets/purchase_popup.dart';
+import 'package:get/get.dart';
+import 'package:colormixer/presentation/controllers/purchase_controller.dart';
 import 'package:flutter/material.dart';
-// import 'package:google_mobile_ads/google_mobile_ads.dart'; // AdMob removed
 import 'package:share_plus/share_plus.dart';
 import '../models/color_project.dart';
 import '../ui/app_colors.dart';
@@ -153,6 +154,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       actions: [
+        Obx(() {
+          final isPremium = Get.find<PurchaseController>().adsRemoved.value;
+          return IconButton(
+            icon: Icon(
+              Icons.workspace_premium,
+              color: isPremium ? AppColors.accent3 : Colors.white60,
+            ),
+            tooltip: isPremium ? 'Premium Active' : 'Go Premium',
+            onPressed: () {
+              showPurchasePopup();
+            },
+          );
+        }),
         IconButton(
           icon: const Icon(Icons.share, color: Colors.white),
           tooltip: 'Share App',

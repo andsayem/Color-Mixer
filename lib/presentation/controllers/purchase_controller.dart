@@ -56,9 +56,6 @@ class PurchaseController extends GetxController {
     adsRemoved.value = removed;
     isLoading.value = false;
 
-    Get.snackbar(
-      "Restore",
-      removed ? "Ads removed" : "No purchase found",
-    );
+    Get.snackbar("Restore", removed ? "Ads removed" : "No purchase found");
   }
 }

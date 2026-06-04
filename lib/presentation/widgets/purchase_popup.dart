@@ -1,3 +1,4 @@
+import 'package:colormixer/common/admob_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:colormixer/presentation/controllers/purchase_controller.dart';
@@ -90,6 +91,10 @@ Future<void> showPurchasePopup({bool showPreferenceButtons = true}) async {
     );
   } else if (result == 'dontask') {
     await prefs.setBool('hide_purchase_dialog', true);
+  }
+  // Show App Open Ad if ads are still not removed
+  if (!controller.adsRemoved.value) {
+    AdmobHelper.showAppOpenAd();
   }
 }
 

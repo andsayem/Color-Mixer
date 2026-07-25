@@ -52,7 +52,7 @@ class AppDrawer extends StatelessWidget {
                               letterSpacing: 1.0,
                               shadows: [
                                 Shadow(
-                                  color: AppColors.accent3.withOpacity(0.3),
+                                  color: AppColors.accent3.withValues(alpha: 0.3),
                                   blurRadius: 4,
                                 ),
                               ],

@@ -152,7 +152,7 @@ Widget _plans(PurchaseController c) {
               boxShadow: selected
                   ? [
                       BoxShadow(
-                        color: N8nColors.primary.withOpacity(0.4),
+                        color: N8nColors.primary.withValues(alpha: 0.4),
                         blurRadius: 20,
                       ),
                     ]

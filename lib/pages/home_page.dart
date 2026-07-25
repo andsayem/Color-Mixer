@@ -98,8 +98,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _shareApp() {
-    Share.share(
-      'Check out the Color Mixer app! https://play.google.com/store/apps/details?id=com.andsayem.colormixer',
+    SharePlus.instance.share(
+      ShareParams(
+        text:
+            'Check out the Color Mixer app! https://play.google.com/store/apps/details?id=com.andsayem.colormixer',
+      ),
     );
   }
 
@@ -220,50 +223,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // ── Stats Row ─────────────────────────────────────────────────────────────
-  Widget _buildStatsRow() {
-    final totalDrops = _projects.fold<int>(0, (s, p) => s + p.totalDrops);
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.folder_rounded,
-                label: 'Projects',
-                value: '${_projects.length}',
-                color: AppColors.accent1,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.water_drop_rounded,
-                label: 'Total Drops',
-                value: '$totalDrops',
-                color: AppColors.accent2,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.color_lens_rounded,
-                label: 'Colors',
-                value: _projects
-                    .map((p) => p.colorLabel)
-                    .toSet()
-                    .length
-                    .toString(),
-                color: AppColors.accent3,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -711,64 +670,6 @@ class _ActionBtn extends StatelessWidget {
           ),
           child: Icon(icon, color: iconColor, size: 18),
         ),
-      ),
-    );
-  }
-}
-
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: color.withAlpha(30),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, size: 16, color: color),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-            ),
-          ),
-        ],
       ),
     );
   }

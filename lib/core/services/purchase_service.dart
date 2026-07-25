@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -211,7 +212,7 @@ class PurchaseService {
   }
 
   Future<bool> restorePurchases({bool isAutoRestore = false}) async {
-    print('Initiating restore purchases... (auto=$isAutoRestore)');
+    debugPrint('Initiating restore purchases... (auto=$isAutoRestore)');
     try {
       _logs.add('Restore requested (auto=$isAutoRestore)');
 
@@ -239,7 +240,7 @@ class PurchaseService {
             return true;
           },
         );
-        print(
+        debugPrint(
           'Restore purchases completed: $result, purchases found: $_purchasesFound',
         );
         _logs.add(
@@ -248,21 +249,21 @@ class PurchaseService {
 
         // Set ads_removed flag based on whether purchases were found
         if (_purchasesFound) {
-          print('Purchases found during restore.');
+          debugPrint('Purchases found during restore.');
           _logs.add('Purchases found - setting ads_removed to true');
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('ads_removed', true);
         } else if (!isAutoRestore) {
           // ✅ ONLY reset to false on explicit user-initiated restore
           // Auto-restore should NEVER clear a previously saved subscription
-          print('No purchases found during manual restore.');
+          debugPrint('No purchases found during manual restore.');
           _logs.add(
             'No purchases found (manual) - setting ads_removed to false',
           );
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool('ads_removed', false);
         } else {
-          print(
+          debugPrint(
             'No purchases found during auto-restore - keeping existing state.',
           );
           _logs.add(
@@ -272,7 +273,7 @@ class PurchaseService {
 
         return result;
       } catch (e) {
-        print('Restore wait error: $e');
+        debugPrint('Restore wait error: $e');
         _logs.add('Restore future error: $e');
         // On auto-restore error, don't reset ads_removed
         if (!isAutoRestore) {

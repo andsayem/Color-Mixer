@@ -43,7 +43,7 @@ class _AdaptiveBannerAdWidgetState extends State<AdaptiveBannerAdWidget> {
       final int width = MediaQuery.of(context).size.width.truncate();
 
       final AdSize? adSize =
-          await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
+          await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
 
       if (adSize == null) {
         _isLoading = false;

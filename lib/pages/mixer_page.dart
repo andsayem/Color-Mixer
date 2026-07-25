@@ -118,7 +118,7 @@ class _MixerPageState extends State<MixerPage>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance?.addObserver(this);
+    WidgetsBinding.instance.addObserver(this);
     _colorCounts = Map.from(widget.project.colorCounts);
     _nameController = TextEditingController(text: widget.project.name);
     _notesController = TextEditingController(text: widget.project.notes ?? '');
@@ -143,7 +143,7 @@ class _MixerPageState extends State<MixerPage>
     _rotateController.dispose();
     _nameController.dispose();
     _notesController.dispose();
-    WidgetsBinding.instance?.removeObserver(this);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -314,8 +314,8 @@ class _MixerPageState extends State<MixerPage>
           TextButton(
             onPressed: () {
               final name =
-                  'Custom \\${selected.value.toRadixString(16).toUpperCase()}';
-              setState(() {
+                   'Custom \\${selected.toARGB32().toRadixString(16).toUpperCase()}';
+               setState(() {
                 _customColors.add(
                   _ColorOption(name, selected, Icons.color_lens_rounded),
                 );
@@ -357,6 +357,7 @@ class _MixerPageState extends State<MixerPage>
     final decoded = img.decodeImage(bytes);
     if (decoded == null) return;
     Color? selectedColor;
+    if (!mounted) return;
     await showDialog<void>(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -392,7 +393,7 @@ class _MixerPageState extends State<MixerPage>
                   ? null
                   : () {
                       final name =
-                          'Custom \\${selectedColor!.value.toRadixString(16).toUpperCase()}';
+                          'Custom \\${selectedColor!.toARGB32().toRadixString(16).toUpperCase()}';
                       setState(() {
                         _customColors.add(
                           _ColorOption(

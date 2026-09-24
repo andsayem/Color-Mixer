@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:admob_kit/admob_kit.dart';
 import 'package:colormixer/widget/adaptive_banner_ad.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,7 +9,6 @@ import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/color_project.dart';
-import '../common/admob_helper.dart';
 
 // ── Design Tokens ──────────────────────────────────────────────────────────────
 class AppColors {
@@ -134,7 +134,6 @@ class _MixerPageState extends State<MixerPage>
     _pulseAnim = Tween<double>(begin: 0.97, end: 1.03).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    AdmobHelper.loadInterstitialAd();
   }
 
   @override
@@ -287,7 +286,7 @@ class _MixerPageState extends State<MixerPage>
           ? null
           : _notesController.text.trim(),
     );
-    AdmobHelper.showInterstitialAd();
+    AdManager.showInterstitial();
     Navigator.of(context).pop(updated);
   }
 
@@ -462,11 +461,8 @@ class _MixerPageState extends State<MixerPage>
                       ]),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: const AdaptiveBannerAdWidget(),
-                    ),
+                  const SliverToBoxAdapter(
+                    child: AdaptiveBannerAdWidget(),
                   ),
                   SliverPersistentHeader(
                     pinned: true,
@@ -556,11 +552,8 @@ class _MixerPageState extends State<MixerPage>
                         _buildNotesField(),
                         const SizedBox(height: 28),
                         _buildActions(),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: const AdaptiveBannerAdWidget(),
-                          ),
+                        const AdaptiveBannerAdWidget(
+                          margin: EdgeInsets.symmetric(vertical: 12),
                         ),
                         const SizedBox(height: 32),
                       ]),

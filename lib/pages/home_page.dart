@@ -1,4 +1,4 @@
-import 'package:colormixer/common/admob_helper.dart';
+import 'package:admob_kit/admob_kit.dart';
 import 'package:colormixer/widget/adaptive_banner_ad.dart';
 import 'package:colormixer/presentation/widgets/purchase_popup.dart';
 import 'package:get/get.dart';
@@ -81,7 +81,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (_) => _NewProjectDialog(controller: ctrl),
     );
     if (result != null && result.trim().isNotEmpty) {
-      AdmobHelper.showInterstitialAd();
+      AdManager.showInterstitial();
       final proj = ColorProject.blank(name: result.trim());
       await _openMixer(proj, isNew: true);
     }
@@ -94,6 +94,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     if (ok == true) {
       setState(() => _projects.removeWhere((p) => p.id == project.id));
+      AdManager.registerAction();
     }
   }
 
@@ -126,11 +127,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 _buildAppBar(),
 
                 // ✅ Ad Here
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: const AdaptiveBannerAdWidget(),
-                  ),
+                const SliverToBoxAdapter(
+                  child: AdaptiveBannerAdWidget(),
                 ),
 
                 // Banner ad removed
@@ -239,14 +237,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(bottom: 14),
             child: _ProjectCard(
               project: project,
-              onEdit: () => {
-                AdmobHelper.showInterstitialAd(),
-                _openMixer(project),
+              onEdit: () {
+                AdManager.registerAction();
+                _openMixer(project);
               },
-              onDelete: () => {
-                AdmobHelper.showInterstitialAd(),
-                _deleteProject(project),
-              },
+              onDelete: () => _deleteProject(project),
             ),
           );
         }, childCount: _projects.length),

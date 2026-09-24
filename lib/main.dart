@@ -1,25 +1,48 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import '../common/admob_helper.dart';
+import 'package:admob_kit/admob_kit.dart';
 import 'presentation/controllers/purchase_controller.dart';
 import 'pages/home_page.dart';
 import 'pages/mixer_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Get.put(PurchaseController());
-  await MobileAds.instance.initialize();
-  final adHelper = AdmobHelper();
-  adHelper.loadAppOpenAd(
-    onLoaded: () {
-      Future.delayed(const Duration(seconds: 2), () {
-        AdmobHelper.showAppOpenAd();
-      });
-    },
-  );
+  final purchaseController = Get.put(PurchaseController());
+
+  // Ad types this app doesn't use (no ad units configured).
+  AdMobSettings.enableRewarded = false;
+  AdMobSettings.enableRewardedInterstitial = false;
+  AdMobSettings.enableNative = false;
+
+  // Premium "Remove Ads" turns every ad type off.
+  _setAdsEnabled(!purchaseController.adsRemoved.value);
+  ever<bool>(purchaseController.adsRemoved, (removed) {
+    _setAdsEnabled(!removed);
+    if (!AdMobService.isInitialized) return;
+    if (removed) {
+      InterstitialAdManager.dispose();
+    } else {
+      AdManager.preloadAll();
+      AppOpenAdManager.initialize();
+    }
+  });
+
+  await AdMobService.initialize();
+  AdManager.preloadAll();
+  AppOpenAdManager.initialize();
+
+  // Cold-start App Open ad, once it has had time to load.
+  Future.delayed(const Duration(seconds: 3), AdManager.showAppOpen);
+
   runApp(const PolikColorMixerApp());
+}
+
+void _setAdsEnabled(bool enabled) {
+  AdMobSettings.enableBanner = enabled;
+  AdMobSettings.enableAdaptiveBanner = enabled;
+  AdMobSettings.enableInterstitial = enabled;
+  AdMobSettings.enableAppOpen = enabled;
 }
 
 class PolikColorMixerApp extends StatelessWidget {

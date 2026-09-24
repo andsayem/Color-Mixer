@@ -1,26 +1,45 @@
-import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../ui/app_colors.dart';
+import 'app_colors.dart';
 
-/// Paints a rotating gradient background for the HomePage.
-/// The animation controller drives a continuous sweep rotation.
+/// Soft, slowly drifting glow orbs painted behind every screen.
 class BgPainter extends CustomPainter {
-  final Animation<double> rotateCtrl;
+  final Animation<double> anim;
 
-  const BgPainter(this.rotateCtrl) : super(repaint: rotateCtrl);
+  BgPainter(this.anim) : super(repaint: anim);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final sweep = SweepGradient(
-      colors: AppColors.accentGradient.colors,
-      stops: const [0.0, 0.5, 1.0],
-      transform: GradientRotation(rotateCtrl.value * 2 * pi),
+    final t = anim.value * 2 * math.pi;
+
+    void orb(double cx, double cy, double r, Color color) {
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [color.withAlpha(38), Colors.transparent],
+        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: r));
+      canvas.drawCircle(Offset(cx, cy), r, paint);
+    }
+
+    orb(
+      size.width * (0.15 + 0.06 * math.sin(t)),
+      size.height * (0.2 + 0.04 * math.cos(t)),
+      size.width * 0.55,
+      AppColors.accent1,
     );
-    final paint = Paint()..shader = sweep.createShader(rect);
-    canvas.drawRect(rect, paint);
+    orb(
+      size.width * (0.8 + 0.05 * math.cos(t)),
+      size.height * (0.72 + 0.05 * math.sin(t)),
+      size.width * 0.5,
+      AppColors.accent2,
+    );
+    orb(
+      size.width * 0.5,
+      size.height * (0.45 + 0.03 * math.sin(t + 1)),
+      size.width * 0.35,
+      AppColors.accent3,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant BgPainter oldDelegate) => true;
+  bool shouldRepaint(BgPainter oldDelegate) => true;
 }

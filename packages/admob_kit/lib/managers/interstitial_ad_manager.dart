@@ -111,7 +111,7 @@ class InterstitialAdManager {
     _lastShownAt = DateTime.now();
     ad.dispose();
     _ad = null;
-    load();
+    if (AdMobSettings.reloadInterstitialAfterShow) load();
   }
 
   /// Shows the cached interstitial if every guard (enabled, cooldown, no

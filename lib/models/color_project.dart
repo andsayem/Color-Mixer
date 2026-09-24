@@ -4,6 +4,9 @@ class ColorProject {
   final String id;
   String name;
   Map<String, int> colorCounts;
+
+  /// User-added colors: display name -> ARGB value.
+  Map<String, int> customColors;
   DateTime updatedAt;
   String? notes;
 
@@ -11,94 +14,154 @@ class ColorProject {
     required this.id,
     required this.name,
     required this.colorCounts,
+    Map<String, int>? customColors,
     DateTime? updatedAt,
     this.notes,
-  }) : updatedAt = updatedAt ?? DateTime.now();
+  }) : customColors = customColors ?? {},
+       updatedAt = updatedAt ?? DateTime.now();
+
+  /// The built-in paints every project starts with.
+  static const Map<String, Color> primaries = {
+    'Red': Color(0xFFEF4444),
+    'Blue': Color(0xFF3B82F6),
+    'Yellow': Color(0xFFF59E0B),
+    'White': Color(0xFFFFFFFF),
+    'Black': Color(0xFF000000),
+  };
 
   int get totalDrops => colorCounts.values.fold(0, (s, v) => s + v);
 
-  Color get mixedColor {
-    if (totalDrops == 0) return Colors.white;
-    const redColor = Color(0xFFEF4444);
-    const blueColor = Color(0xFF3B82F6);
-    const yellowColor = Color(0xFFF59E0B);
+  /// The paint color for [name], built-in or custom.
+  Color? colorOf(String name) {
+    final custom = customColors[name];
+    return custom != null ? Color(custom) : primaries[name];
+  }
 
-    int rs = 0, gs = 0, bs = 0;
-    void add(Color c, int cnt) {
+  Color get mixedColor => mix(colorCounts, customColors);
+
+  /// Averages every color by its number of drops.
+  static Color mix(Map<String, int> counts, Map<String, int> customColors) {
+    int rs = 0, gs = 0, bs = 0, total = 0;
+    counts.forEach((name, cnt) {
+      if (cnt <= 0) return;
+      final custom = customColors[name];
+      final c = custom != null ? Color(custom) : primaries[name];
+      if (c == null) return;
       rs += _ch(c, 16) * cnt;
       gs += _ch(c, 8) * cnt;
       bs += _ch(c, 0) * cnt;
-    }
-
-    add(redColor, colorCounts['Red'] ?? 0);
-    add(blueColor, colorCounts['Blue'] ?? 0);
-    add(yellowColor, colorCounts['Yellow'] ?? 0);
+      total += cnt;
+    });
+    if (total == 0) return Colors.white;
     return Color.fromARGB(
       255,
-      (rs / totalDrops).round(),
-      (gs / totalDrops).round(),
-      (bs / totalDrops).round(),
+      (rs / total).round(),
+      (gs / total).round(),
+      (bs / total).round(),
     );
   }
 
-  int _ch(Color c, int shift) => (c.toARGB32() >> shift) & 0xFF;
+  static int _ch(Color c, int shift) => (c.toARGB32() >> shift) & 0xFF;
 
-  String get hexString {
-    final c = mixedColor;
-    return '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase().substring(2)}';
-  }
+  static String hexOf(Color c) =>
+      '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase().substring(2)}';
 
-  String get colorLabel {
-    final color = mixedColor;
-    int r = _ch(color, 16), g = _ch(color, 8), b = _ch(color, 0);
-    final refs = {
-      'Red': [239, 68, 68],
-      'Blue': [59, 130, 246],
-      'Yellow': [245, 158, 11],
-      'Orange': [249, 115, 22],
-      'Green': [34, 197, 94],
-      'Purple': [168, 85, 247],
-      'Pink': [236, 72, 153],
-      'Brown': [120, 53, 15],
-      'Gray': [148, 163, 184],
-      'White': [255, 255, 255],
+  String get hexString => hexOf(mixedColor);
+
+  String get colorLabel => labelOf(mixedColor);
+
+  /// A human color name for [color], from its hue, saturation and
+  /// lightness - e.g. "Red-Orange", "Dark Green", "Light Gray".
+  static String labelOf(Color color) {
+    final hsl = HSLColor.fromColor(color);
+    final h = hsl.hue, s = hsl.saturation, l = hsl.lightness;
+
+    // Near-neutral colors.
+    if (l >= 0.95) return 'White';
+    if (l <= 0.07) return 'Black';
+    if (s < 0.12) {
+      if (l >= 0.75) return 'Light Gray';
+      if (l <= 0.3) return 'Dark Gray';
+      return 'Gray';
+    }
+
+    // Dark, warm hues read as browns.
+    if (h >= 10 && h < 50 && l < 0.4) return l < 0.22 ? 'Dark Brown' : 'Brown';
+
+    final base = switch (h) {
+      < 10 => 'Red',
+      < 22 => 'Red-Orange',
+      < 40 => 'Orange',
+      < 50 => 'Amber',
+      < 66 => 'Yellow',
+      < 90 => 'Yellow-Green',
+      < 150 => 'Green',
+      < 175 => 'Teal',
+      < 200 => 'Cyan',
+      < 250 => 'Blue',
+      < 275 => 'Indigo',
+      < 300 => 'Purple',
+      < 330 => 'Magenta',
+      < 348 => 'Pink',
+      _ => 'Red',
     };
-    String nearest = 'Custom';
-    int best = 9999;
-    refs.forEach((name, rgb) {
-      final d = (r - rgb[0]).abs() + (g - rgb[1]).abs() + (b - rgb[2]).abs();
-      if (d < best) {
-        best = d;
-        nearest = name;
-      }
-    });
-    return nearest;
+
+    if (l >= 0.78) return 'Light $base';
+    if (l <= 0.28) return 'Dark $base';
+    if (s < 0.3) return 'Muted $base';
+    return base;
   }
 
   ColorProject copyWith({
     String? name,
     Map<String, int>? colorCounts,
+    Map<String, int>? customColors,
     String? notes,
   }) {
     return ColorProject(
       id: id,
       name: name ?? this.name,
       colorCounts: colorCounts ?? Map.from(this.colorCounts),
+      customColors: customColors ?? Map.from(this.customColors),
       updatedAt: DateTime.now(),
       notes: notes ?? this.notes,
     );
   }
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'colorCounts': colorCounts,
+    'customColors': customColors,
+    'updatedAt': updatedAt.toIso8601String(),
+    'notes': notes,
+  };
+
+  factory ColorProject.fromJson(Map<String, dynamic> json) {
+    Map<String, int> intMap(Object? v) => v is Map
+        ? v.map((k, val) => MapEntry('$k', (val as num).toInt()))
+        : <String, int>{};
+
+    return ColorProject(
+      id: '${json['id']}',
+      name: '${json['name'] ?? 'Untitled Mix'}',
+      colorCounts: intMap(json['colorCounts']),
+      customColors: intMap(json['customColors']),
+      updatedAt: DateTime.tryParse('${json['updatedAt']}'),
+      notes: json['notes'] as String?,
+    );
+  }
+
   static ColorProject blank({String name = 'New Mix'}) => ColorProject(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: name,
-        colorCounts: {'Red': 0, 'Blue': 0, 'Yellow': 0},
-      );
+    id: DateTime.now().millisecondsSinceEpoch.toString(),
+    name: name,
+    colorCounts: {'Red': 0, 'Blue': 0, 'Yellow': 0},
+  );
 
   static ColorProject get defaultProject => ColorProject(
-        id: 'default_001',
-        name: 'Sunset Orange',
-        colorCounts: {'Red': 5, 'Blue': 1, 'Yellow': 3},
-        notes: 'Warm sunset tones for wall art.',
-      );
+    id: 'default_001',
+    name: 'Sunset Orange',
+    colorCounts: {'Red': 5, 'Blue': 1, 'Yellow': 3},
+    notes: 'Warm sunset tones for wall art.',
+  );
 }

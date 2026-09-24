@@ -56,13 +56,15 @@ class AdMobConfig {
   // ---------------------------------------------------------------------
   // Rewarded interstitial
   // ---------------------------------------------------------------------
-  static const String androidRewardedInterstitialId = ''; // not used in Color Mixer
+  static const String androidRewardedInterstitialId =
+      'ca-app-pub-1195883693665145/4853089544'; // not used in Color Mixer
   static const String? iosRewardedInterstitialId = null;
 
   // ---------------------------------------------------------------------
   // Native
   // ---------------------------------------------------------------------
-  static const String androidNativeId = ''; // not used in Color Mixer
+  static const String androidNativeId =
+      'ca-app-pub-1195883693665145/2227011920'; // not used in Color Mixer
   static const String? iosNativeId = null;
 
   /// Must match the `factoryId` registered natively via

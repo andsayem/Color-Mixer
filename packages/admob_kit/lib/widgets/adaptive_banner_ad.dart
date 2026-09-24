@@ -33,10 +33,16 @@ import '../managers/banner_ad_manager.dart';
 ///   builder: (context, ad) => Column(children: [const Text('Ad'), ad]),
 /// )
 /// ```
+///
+/// Set [collapsible] (`'bottom'` or `'top'`, matching where the banner is
+/// anchored) to request a collapsible banner: it opens larger, then
+/// collapses to a normal banner. Only the first request asks for it -
+/// Google recommends not collapsing on every load.
 class AdaptiveBannerAd extends StatefulWidget {
-  const AdaptiveBannerAd({super.key, this.builder});
+  const AdaptiveBannerAd({super.key, this.builder, this.collapsible});
 
   final Widget Function(BuildContext context, Widget ad)? builder;
+  final String? collapsible;
 
   @override
   State<AdaptiveBannerAd> createState() => _AdaptiveBannerAdState();
@@ -64,8 +70,12 @@ class _AdaptiveBannerAdState extends State<AdaptiveBannerAd> {
         !AdMobUtils.isSupportedPlatform) {
       return;
     }
+    final collapsible = widget.collapsible;
     BannerAdManager.loadAdaptiveBanner(
       width: width,
+      extras: collapsible != null && _retryCount == 0
+          ? {'collapsible': collapsible}
+          : null,
       onLoaded: (ad) {
         if (_disposed) {
           ad.dispose();

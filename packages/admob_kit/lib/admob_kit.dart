@@ -29,3 +29,6 @@ export 'managers/rewarded_interstitial_ad_manager.dart';
 export 'widgets/ad_banner.dart';
 export 'widgets/adaptive_banner_ad.dart';
 export 'widgets/native_ad.dart';
+
+// So host apps can pick banner sizes without depending on google_mobile_ads.
+export 'package:google_mobile_ads/google_mobile_ads.dart' show AdSize;

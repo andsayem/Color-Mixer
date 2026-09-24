@@ -5,11 +5,12 @@ import 'package:get/get.dart';
 import 'package:colormixer/presentation/controllers/purchase_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import '../core/services/project_store.dart';
 import '../models/color_project.dart';
 import '../ui/app_colors.dart';
 import '../ui/app_drawer.dart';
 import '../ui/bg_painter.dart';
-import 'mixer_page.dart' hide AppColors, BgPainter;
+import 'mixer_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,8 +20,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  final List<ColorProject> _projects = [ColorProject.defaultProject];
-  // BannerAd? _bannerAd; // Removed AdMob banner
+  final List<ColorProject> _projects = [];
+  bool _loaded = false;
   late AnimationController _rotateCtrl;
   late AnimationController _fabCtrl;
   late Animation<double> _fabScale;
@@ -40,8 +41,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       begin: 1.0,
       end: 0.88,
     ).animate(CurvedAnimation(parent: _fabCtrl, curve: Curves.easeOut));
-    // AdMob interstitial and banner loading removed
+    _loadProjects();
   }
+
+  Future<void> _loadProjects() async {
+    final saved = await ProjectStore.load();
+    if (!mounted) return;
+    setState(() {
+      _projects
+        ..clear()
+        ..addAll(saved);
+      _loaded = true;
+    });
+  }
+
+  void _persist() => ProjectStore.save(_projects);
 
   @override
   void dispose() {
@@ -58,14 +72,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
     if (result != null) {
+      // Most recently edited project goes to the top.
       setState(() {
-        final idx = _projects.indexWhere((p) => p.id == result.id);
-        if (idx >= 0) {
-          _projects[idx] = result;
-        } else {
-          _projects.insert(0, result);
-        }
+        _projects
+          ..removeWhere((p) => p.id == result.id)
+          ..insert(0, result);
       });
+      _persist();
     }
   }
 
@@ -75,14 +88,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _showCreateDialog() async {
+    // Load now so the interstitial shown after this dialog is ready.
+    InterstitialAdManager.load();
     final ctrl = TextEditingController();
     final result = await showDialog<String>(
       context: context,
       builder: (_) => _NewProjectDialog(controller: ctrl),
     );
-    if (result != null && result.trim().isNotEmpty) {
+    if (result != null) {
       AdManager.showInterstitial();
-      final proj = ColorProject.blank(name: result.trim());
+      final proj = ColorProject.blank(
+        name: result.trim().isEmpty ? 'New Mix' : result.trim(),
+      );
       await _openMixer(proj, isNew: true);
     }
   }
@@ -92,10 +109,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       context: context,
       builder: (_) => _DeleteDialog(name: project.name),
     );
-    if (ok == true) {
-      setState(() => _projects.removeWhere((p) => p.id == project.id));
-      AdManager.registerAction();
-    }
+    if (ok != true || !mounted) return;
+
+    final index = _projects.indexWhere((p) => p.id == project.id);
+    if (index < 0) return;
+    setState(() => _projects.removeAt(index));
+    _persist();
+    AdManager.registerAction();
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('"${project.name}" deleted'),
+          action: SnackBarAction(
+            label: 'UNDO',
+            textColor: AppColors.accent2,
+            onPressed: () {
+              if (!mounted) return;
+              setState(
+                () =>
+                    _projects.insert(index.clamp(0, _projects.length), project),
+              );
+              _persist();
+            },
+          ),
+        ),
+      );
   }
 
   void _shareApp() {
@@ -125,14 +165,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               physics: const BouncingScrollPhysics(),
               slivers: [
                 _buildAppBar(),
-
-                // ✅ Ad Here
-                const SliverToBoxAdapter(
-                  child: AdaptiveBannerAdWidget(),
-                ),
-
-                // Banner ad removed
-                if (_projects.isEmpty)
+                if (!_loaded)
+                  const SliverToBoxAdapter(child: SizedBox.shrink())
+                else if (_projects.isEmpty)
                   _buildEmptyState()
                 else
                   _buildProjectList(),
@@ -157,22 +192,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       actions: [
         Obx(() {
           final isPremium = Get.find<PurchaseController>().adsRemoved.value;
-          return IconButton(
-            icon: Icon(
-              Icons.workspace_premium,
-              color: isPremium ? AppColors.accent3 : Colors.white60,
-            ),
-            tooltip: isPremium ? 'Premium Active' : 'Go Premium',
-            onPressed: () {
-              showPurchasePopup();
-            },
-          );
+          return _PremiumBadge(isPremium: isPremium, onTap: showPurchasePopup);
         }),
         IconButton(
-          icon: const Icon(Icons.share, color: Colors.white),
+          icon: const Icon(
+            Icons.ios_share_rounded,
+            color: AppColors.textPrimary,
+          ),
           tooltip: 'Share App',
           onPressed: _shareApp,
         ),
+        const SizedBox(width: 4),
       ],
       flexibleSpace: FlexibleSpaceBar(
         collapseMode: CollapseMode.pin,
@@ -214,10 +244,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
-                'My paint mix projects',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                _projects.isEmpty
+                    ? 'Start your first paint mix'
+                    : '${_projects.length} paint mix '
+                          '${_projects.length == 1 ? 'project' : 'projects'}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                ),
               ),
             ],
           ),
@@ -227,24 +263,50 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ── Project List ──────────────────────────────────────────────────────────
+  /// In-feed ad after the 2nd project, then after every 5 more. The list is
+  /// built lazily, so each ad is only requested when scrolled near.
+  static bool _adAfter(int projectIndex) =>
+      projectIndex >= 1 && (projectIndex - 1) % 5 == 0;
+
   Widget _buildProjectList() {
+    final items = <Widget>[];
+    for (var i = 0; i < _projects.length; i++) {
+      final project = _projects[i];
+      items.add(
+        Padding(
+          key: ValueKey(project.id),
+          padding: const EdgeInsets.only(bottom: 14),
+          child: _ProjectCard(
+            project: project,
+            onEdit: () {
+              AdManager.registerAction();
+              _openMixer(project);
+            },
+            onDelete: () => _deleteProject(project),
+          ),
+        ),
+      );
+      if (_adAfter(i)) {
+        items.add(
+          InlineAdCard(
+            key: ValueKey('ad_$i'),
+            margin: const EdgeInsets.only(bottom: 14),
+          ),
+        );
+      }
+    }
+
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate((context, index) {
-          final project = _projects[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: _ProjectCard(
-              project: project,
-              onEdit: () {
-                AdManager.registerAction();
-                _openMixer(project);
-              },
-              onDelete: () => _deleteProject(project),
-            ),
-          );
-        }, childCount: _projects.length),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => items[index],
+          childCount: items.length,
+          findChildIndexCallback: (key) {
+            final i = items.indexWhere((w) => w.key == key);
+            return i < 0 ? null : i;
+          },
+        ),
       ),
     );
   }
@@ -257,19 +319,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 90,
-              height: 90,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
                 gradient: AppColors.accentGradient,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accent1.withAlpha(90),
+                    blurRadius: 32,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: const Icon(
                 Icons.palette_outlined,
                 color: Colors.white,
-                size: 40,
+                size: 42,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             const Text(
               'No projects yet',
               style: TextStyle(
@@ -280,8 +349,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Tap + to create your first paint mix',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              'Mix red, blue and yellow drops\nto discover new colors.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: _createNew,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textPrimary,
+                side: const BorderSide(color: AppColors.border),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.add_rounded, color: AppColors.accent2),
+              label: const Text(
+                'Create a project',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
@@ -296,11 +390,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: GestureDetector(
         onTap: _createNew,
         child: Container(
-          width: 62,
-          height: 62,
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           decoration: BoxDecoration(
             gradient: AppColors.accentGradient,
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
                 color: AppColors.accent1.withAlpha(100),
@@ -309,7 +403,75 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ],
           ),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, color: Colors.white, size: 26),
+              SizedBox(width: 8),
+              Text(
+                'New Mix',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Premium Badge ─────────────────────────────────────────────────────────────
+class _PremiumBadge extends StatelessWidget {
+  final bool isPremium;
+  final VoidCallback onTap;
+
+  const _PremiumBadge({required this.isPremium, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: isPremium ? AppColors.goldGradient : null,
+              color: isPremium ? null : AppColors.gold.withAlpha(24),
+              borderRadius: BorderRadius.circular(20),
+              border: isPremium
+                  ? null
+                  : Border.all(color: AppColors.gold.withAlpha(90)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 16,
+                  color: isPremium ? Colors.black87 : AppColors.gold,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  isPremium ? 'PRO' : 'Go Pro',
+                  style: TextStyle(
+                    color: isPremium ? Colors.black87 : AppColors.gold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -360,14 +522,10 @@ class _ProjectCardState extends State<_ProjectCard>
   Widget build(BuildContext context) {
     final p = widget.project;
     final mixColor = p.mixedColor;
-    final pct = p.totalDrops == 0
-        ? {'Red': 0, 'Blue': 0, 'Yellow': 0}
-        : {
-            'Red': ((p.colorCounts['Red'] ?? 0) * 100 / p.totalDrops).round(),
-            'Blue': ((p.colorCounts['Blue'] ?? 0) * 100 / p.totalDrops).round(),
-            'Yellow': ((p.colorCounts['Yellow'] ?? 0) * 100 / p.totalDrops)
-                .round(),
-          };
+    // The paints in this mix, for the recipe strip.
+    final recipe = p.colorCounts.entries
+        .where((e) => e.value > 0 && p.colorOf(e.key) != null)
+        .toList();
 
     return GestureDetector(
       onTapDown: (_) => _c.forward(),
@@ -424,39 +582,27 @@ class _ProjectCardState extends State<_ProjectCard>
                         ),
                       ),
                     ),
-                    // Bars top-right
-                    Positioned(
-                      right: 14,
-                      top: 0,
-                      bottom: 0,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _MiniBar(
-                            'R',
-                            pct['Red'] ?? 0,
-                            const Color(0xFFEF4444),
-                          ),
-                          const SizedBox(height: 4),
-                          _MiniBar(
-                            'B',
-                            pct['Blue'] ?? 0,
-                            const Color(0xFF3B82F6),
-                          ),
-                          const SizedBox(height: 4),
-                          _MiniBar(
-                            'Y',
-                            pct['Yellow'] ?? 0,
-                            const Color(0xFFF59E0B),
-                          ),
-                        ],
+                    // Recipe strip: each paint's share of the mix.
+                    if (recipe.isNotEmpty)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 6,
+                        child: Row(
+                          children: [
+                            for (final e in recipe)
+                              Expanded(
+                                flex: e.value,
+                                child: ColoredBox(color: p.colorOf(e.key)!),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
                     // Hex badge bottom-left
                     Positioned(
                       left: 14,
-                      bottom: 10,
+                      bottom: 16,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -522,11 +668,16 @@ class _ProjectCardState extends State<_ProjectCard>
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                '${p.totalDrops} drops',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
+                              Flexible(
+                                child: Text(
+                                  '${p.totalDrops} drops · '
+                                  '${_timeAgo(p.updatedAt)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ],
@@ -577,58 +728,16 @@ class _ProjectCardState extends State<_ProjectCard>
   }
 }
 
-// ── Mini Bar ──────────────────────────────────────────────────────────────────
-class _MiniBar extends StatelessWidget {
-  final String label;
-  final int pct;
-  final Color color;
-
-  const _MiniBar(this.label, this.pct, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Container(
-          width: 50,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.white24,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: pct / 100,
-            child: Container(
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          '$pct%',
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
+// ── Relative time ─────────────────────────────────────────────────────────────
+/// "just now", "5 min ago", "3 h ago", "2 days ago", or the date.
+String _timeAgo(DateTime time) {
+  final diff = DateTime.now().difference(time);
+  if (diff.inMinutes < 1) return 'just now';
+  if (diff.inHours < 1) return '${diff.inMinutes} min ago';
+  if (diff.inDays < 1) return '${diff.inHours} h ago';
+  if (diff.inDays == 1) return 'yesterday';
+  if (diff.inDays < 7) return '${diff.inDays} days ago';
+  return '${time.day}/${time.month}/${time.year}';
 }
 
 // ── Action Button ─────────────────────────────────────────────────────────────
@@ -712,12 +821,14 @@ class _NewProjectDialog extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.done,
                 style: const TextStyle(
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w600,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Project name…',
+                  hintText: 'e.g. Living room wall',
                   hintStyle: TextStyle(color: AppColors.textSecondary),
                   prefixIcon: Icon(
                     Icons.label_outline_rounded,
@@ -733,7 +844,12 @@ class _NewProjectDialog extends StatelessWidget {
                 onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            const Text(
+              'You can rename it later.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(

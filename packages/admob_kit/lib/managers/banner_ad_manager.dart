@@ -14,15 +14,17 @@ import '../core/admob_logger.dart';
 class BannerAdManager {
   BannerAdManager._();
 
-  /// Creates and loads a fixed 320x50 banner ad.
+  /// Creates and loads a fixed-size banner ad ([size] defaults to 320x50;
+  /// pass `AdSize.mediumRectangle` for an in-content 300x250).
   static void loadStandardBanner({
+    AdSize size = AdSize.banner,
     required void Function(BannerAd ad) onLoaded,
     required void Function(Object error) onFailed,
   }) {
     AdMobLogger.log('Banner loading');
     BannerAd(
       adUnitId: AdMobConfig.bannerId,
-      size: AdSize.banner,
+      size: size,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
@@ -52,6 +54,7 @@ class BannerAdManager {
     required int width,
     required void Function(BannerAd ad) onLoaded,
     required void Function(Object error) onFailed,
+    Map<String, String>? extras,
   }) async {
     final AnchoredAdaptiveBannerAdSize? size =
         await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
@@ -67,7 +70,7 @@ class BannerAdManager {
     BannerAd(
       adUnitId: AdMobConfig.adaptiveBannerId,
       size: size,
-      request: const AdRequest(),
+      request: AdRequest(extras: extras),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           AdMobLogger.log('Adaptive banner loaded');

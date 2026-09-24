@@ -143,7 +143,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
     ad.dispose();
     _ad = null;
     _adLoadedAt = null;
-    load();
+    if (!AdMobSettings.appOpenLoadOnBackground) load();
   }
 
   /// Shows the cached App Open ad if every guard passes. Can also be
@@ -168,7 +168,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
 
       final ad = _ad;
       if (ad == null) {
-        unawaited(load());
+        if (!AdMobSettings.appOpenLoadOnBackground) unawaited(load());
         return AdShowResult.notReady;
       }
 
@@ -184,6 +184,8 @@ class AppOpenAdManager with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _backgroundedAt = DateTime.now();
+      // Fresh ad ready for when the user comes back.
+      if (AdMobSettings.appOpenLoadOnBackground) load();
       return;
     }
     if (state != AppLifecycleState.resumed) return;
@@ -199,7 +201,8 @@ class AppOpenAdManager with WidgetsBindingObserver {
     final backgroundedAt = _backgroundedAt;
     if (backgroundedAt != null) {
       final backgroundedFor = DateTime.now().difference(backgroundedAt);
-      if (backgroundedFor.inSeconds < AdMobSettings.appOpenMinBackgroundSeconds) {
+      if (backgroundedFor.inSeconds <
+          AdMobSettings.appOpenMinBackgroundSeconds) {
         // Too brief to be a real "return to the app" moment (e.g. a
         // permission dialog, a quick notification peek, an app switch
         // that bounced right back) - showing here would waste an

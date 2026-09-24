@@ -3,36 +3,122 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:colormixer/presentation/controllers/purchase_controller.dart';
 import 'package:colormixer/presentation/widgets/purchase_popup.dart';
+import 'package:colormixer/ui/app_colors.dart';
 
-/// admob_kit's adaptive banner in a card styled to match the app, with a
-/// "Remove ads" shortcut. Takes no space until an ad has actually loaded,
-/// and disappears once the user has removed ads.
-class AdaptiveBannerAdWidget extends StatelessWidget {
-  const AdaptiveBannerAdWidget({
+/// Hides [child] once the user has bought "Remove Ads".
+class _HideForPremium extends StatelessWidget {
+  const _HideForPremium({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<PurchaseController>()) return child;
+    final purchase = Get.find<PurchaseController>();
+    return Obx(
+      () => purchase.adsRemoved.value ? const SizedBox.shrink() : child,
+    );
+  }
+}
+
+/// Puts one bottom-anchored banner under every screen of the app. Use it
+/// as `GetMaterialApp(builder: (context, child) => AppBannerShell(child: child!))`.
+///
+/// It lives outside the Navigator, so it is loaded once per app session
+/// and simply stays while the user moves between screens - no new request
+/// per page. AdMob's own refresh (set in the AdMob console) then rotates
+/// ads in the same, always-visible slot, so each request becomes an
+/// impression. The first request asks for a collapsible banner.
+class AppBannerShell extends StatelessWidget {
+  const AppBannerShell({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<PurchaseController>()) {
+      return _layout(context, showBanner: true);
+    }
+    final purchase = Get.find<PurchaseController>();
+    return Obx(
+      () => _layout(context, showBanner: !purchase.adsRemoved.value),
+    );
+  }
+
+  /// The widget tree has the same shape whether or not the banner shows,
+  /// so buying "Remove Ads" never rebuilds the Navigator (which would
+  /// reset the user's screens).
+  Widget _layout(BuildContext context, {required bool showBanner}) {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final bannerVisible = showBanner && !keyboardOpen;
+    return ColoredBox(
+      color: AppColors.surface,
+      child: Column(
+        children: [
+          Expanded(
+            // The banner area below handles the bottom system inset.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeBottom: bannerVisible,
+              child: child,
+            ),
+          ),
+          // Hidden (not disposed) while typing, so the loaded ad survives.
+          Visibility(
+            visible: bannerVisible,
+            maintainState: showBanner,
+            child: showBanner ? const _AppBanner() : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppBanner extends StatelessWidget {
+  const _AppBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: AdaptiveBannerAd(
+          collapsible: 'bottom',
+          // heightFactor 1: only as tall as the ad itself.
+          builder: (context, ad) => Center(heightFactor: 1, child: ad),
+        ),
+      ),
+    );
+  }
+}
+
+/// A 300x250 medium-rectangle ad in a card, for placing inside scrolling
+/// content. Medium rectangles usually earn more per impression than
+/// banners. Put it in a lazily built list so it's only requested when the
+/// user scrolls close to it.
+class InlineAdCard extends StatelessWidget {
+  const InlineAdCard({
     super.key,
-    this.margin = const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+    this.margin = const EdgeInsets.symmetric(vertical: 12),
   });
 
   final EdgeInsetsGeometry margin;
 
   @override
   Widget build(BuildContext context) {
-    if (!Get.isRegistered<PurchaseController>()) return _banner();
-
-    final purchaseController = Get.find<PurchaseController>();
-    return Obx(
-      () => purchaseController.adsRemoved.value
-          ? const SizedBox.shrink()
-          : _banner(),
-    );
-  }
-
-  Widget _banner() {
-    // The margin sits outside the banner so the ad is sized to the card's
-    // real width (the card itself must not add horizontal padding).
-    return Padding(
-      padding: margin,
-      child: AdaptiveBannerAd(builder: (context, ad) => _AdCard(ad: ad)),
+    return _HideForPremium(
+      child: Padding(
+        padding: margin,
+        child: AdBanner(
+          size: AdSize.mediumRectangle,
+          builder: (context, ad) => _AdCard(ad: ad),
+        ),
+      ),
     );
   }
 }
@@ -42,28 +128,21 @@ class _AdCard extends StatelessWidget {
 
   final Widget ad;
 
-  static const _radius = BorderRadius.all(Radius.circular(16));
-  static const _labelColor = Color(0xFF9E9EB8);
-
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(10),
-        borderRadius: _radius,
-      ),
-      // Border as a foreground layer so it doesn't take width from the ad.
-      foregroundDecoration: BoxDecoration(
-        borderRadius: _radius,
-        border: Border.all(color: Colors.white.withAlpha(22)),
+        gradient: AppColors.cardGradient,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 4, 10),
+            padding: const EdgeInsets.fromLTRB(14, 8, 4, 10),
             child: Row(
               children: [
                 Container(
@@ -72,13 +151,13 @@ class _AdCard extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B).withAlpha(40),
+                    color: AppColors.gold.withAlpha(40),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
                     'AD',
                     style: TextStyle(
-                      color: Color(0xFFF59E0B),
+                      color: AppColors.gold,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
@@ -88,13 +167,16 @@ class _AdCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 const Text(
                   'Sponsored',
-                  style: TextStyle(color: _labelColor, fontSize: 12),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: showPurchasePopup,
                   style: TextButton.styleFrom(
-                    foregroundColor: _labelColor,
+                    foregroundColor: AppColors.textSecondary,
                     visualDensity: VisualDensity.compact,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -109,8 +191,8 @@ class _AdCard extends StatelessWidget {
               ],
             ),
           ),
-          Center(child: ad),
-          const SizedBox(height: 4),
+          ad,
+          const SizedBox(height: 12),
         ],
       ),
     );

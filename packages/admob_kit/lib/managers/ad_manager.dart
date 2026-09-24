@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../config/admob_settings.dart';
@@ -99,7 +101,12 @@ class AdManager {
       '${AdMobSettings.interstitialActionInterval})',
     );
 
-    if (_actionCount % AdMobSettings.interstitialActionInterval != 0) {
+    final interval = AdMobSettings.interstitialActionInterval;
+    if (_actionCount % interval != 0) {
+      // Load just in time: the next action is the one that shows an ad.
+      if ((_actionCount + 1) % interval == 0) {
+        unawaited(InterstitialAdManager.load());
+      }
       return AdShowResult.frequencyNotMet;
     }
 

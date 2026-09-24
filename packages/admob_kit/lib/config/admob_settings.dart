@@ -52,6 +52,20 @@ class AdMobSettings {
   static int appOpenMaxCacheHours = 4;
 
   // ---------------------------------------------------------------------
+  // Load timing (show rate)
+  // ---------------------------------------------------------------------
+
+  /// Load the next interstitial right after one is shown. Off means the
+  /// app loads just-in-time instead (e.g. when entering a screen that can
+  /// show one), so fewer loaded ads expire unseen.
+  static bool reloadInterstitialAfterShow = true;
+
+  /// Load App Open ads when the app goes to the background instead of
+  /// right after one is shown. The ad is then fresh for the very next
+  /// return, instead of sitting in cache until it expires.
+  static bool appOpenLoadOnBackground = false;
+
+  // ---------------------------------------------------------------------
   // Retry
   // ---------------------------------------------------------------------
 
